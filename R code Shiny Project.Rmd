@@ -1,0 +1,261 @@
+---
+title: "NY-Parking"
+author: "Jared Fortier"
+date: "2018 M11 5"
+output: html_document
+---
+
+#Step 1: Data Cleansing 
+```{r step1_data_cleansing}
+library(hflights)
+library(shiny)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(lubridate)
+library(Hmisc)
+setwd('C:\\Users\\Dolomite\\Desktop\\Analytics\\901\\Shiny Project')
+
+```
+
+#Step 1: Data Cleansing 
+```{r step1_data_cleansing}
+
+# Create an object with the names of each column header 
+parkCols <- read_csv("parking-violations-issued-fiscal-year-2018.csv", n_max = 1, col_names=FALSE)
+
+
+# Determine if any columns should be dropped because they're empty, or do not provide info. Define the remaining columns
+dropCols <- list()
+keepCols <-list()
+counter <- 0
+elsecounter <-0
+for (i in parkCols){
+  counter <- counter + 1
+  park <- fread("parking-violations-issued-fiscal-year-2018.csv", select = i, nrows = 5000)
+  if ((sum(is.na(park))/count(park))>0.99){
+    dropCols[counter]<-i
+  }else if (count(park)==n_distinct(park)){
+    dropCols[counter]<-i
+  }else{
+    elsecounter <- elsecounter+1
+    keepCols[elsecounter]<-i}
+} 
+
+
+
+# append(1:5, 0:1, after = 3)
+# lapply(park, MARGIN = 2, count(is.na(park)))
+# typeof(parkCols)  # }
+# sum(is.na(park))
+# count(park)
+# parkCols <- read_csv("parking-violations-issued-fiscal-year-2018.csv", n_max = 1, col_names=FALSE)
+```
+
+
+# Step 2 UI framework
+```{r UI_frameowrk}
+library(hflights)
+library(shiny)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(lubridate)
+data(hflights)
+hflights$mmddyy <- paste(hflights$Year,hflights$Month,hflights$DayofMonth, sep = "-")
+hflights$mmddyy <- ymd(hflights$mmddyy)
+
+
+
+lut <- c("AA" = "American", "AS" = "Alaska", "B6" = "JetBlue", "CO" = "Continental", "DL" = "Delta", "OO" = "SkyWest", "UA" = "United", "US" = "US_Airways", "WN" = "Southwest", "EV" = "Atlantic_Southeast", "F9" = "Frontier", "FL" = "AirTran", "MQ" = "American_Eagle", "XE" = "ExpressJet", "YV" = "Mesa")
+
+hflights$UniqueCarrier <- lut[hflights$UniqueCarrier]
+
+
+ui <- fluidPage(
+       splitLayout()
+        
+  
+)
+
+server <- function(input, output) {
+  
+}
+
+shinyApp(ui, server)
+
+```
+
+
+## Step 3 Checkbox 
+```{r check_box}
+library(hflights)
+library(shiny)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(lubridate)
+data(hflights)
+hflights$mmddyy <- paste(hflights$Year,hflights$Month,hflights$DayofMonth, sep = "-")
+hflights$mmddyy <- ymd(hflights$mmddyy)
+
+
+lut <- c("AA" = "American", "AS" = "Alaska", "B6" = "JetBlue", "CO" = "Continental", 
+         "DL" = "Delta", "OO" = "SkyWest", "UA" = "United", "US" = "US_Airways", 
+         "WN" = "Southwest", "EV" = "Atlantic_Southeast", "F9" = "Frontier", 
+         "FL" = "AirTran", "MQ" = "American_Eagle", "XE" = "ExpressJet", "YV" = "Mesa")
+
+hflights$UniqueCarrier <- lut[hflights$UniqueCarrier]
+
+
+ui <- fluidPage(
+        splitLayout(  
+                checkboxGroupInput("cb", "Select Air Carriers of Interest", choices = unique(hflights$UniqueCarrier), 
+                             selected = unique(hflights$UniqueCarrier)[1],inline = FALSE)
+                
+        )
+        
+  
+)
+
+server <- function(input, output) {
+  
+        
+}
+
+shinyApp(ui, server)
+```
+
+## Step 4 Submit Button 
+```{r update_view}
+library(hflights)
+library(shiny)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(lubridate)
+data(hflights)
+hflights$mmddyy <- paste(hflights$Year,hflights$Month,hflights$DayofMonth, sep = "-")
+hflights$mmddyy <- ymd(hflights$mmddyy)
+
+
+lut <- c("AA" = "American", "AS" = "Alaska", "B6" = "JetBlue", "CO" = "Continental", 
+         "DL" = "Delta", "OO" = "SkyWest", "UA" = "United", "US" = "US_Airways", 
+         "WN" = "Southwest", "EV" = "Atlantic_Southeast", "F9" = "Frontier", 
+         "FL" = "AirTran", "MQ" = "American_Eagle", "XE" = "ExpressJet", "YV" = "Mesa")
+
+hflights$UniqueCarrier <- lut[hflights$UniqueCarrier]
+
+
+ui <- fluidPage(
+        splitLayout(  
+                checkboxGroupInput("cb", "Select Air Carriers of Interest", choices = unique(hflights$UniqueCarrier), 
+                             selected = unique(hflights$UniqueCarrier)[1],inline = FALSE),
+                submitButton("Update View", icon("bar-chart-o")),
+                submitButton("Update View", icon("list-alt")),
+                submitButton("Update View", icon("table")),
+                submitButton("Update View", icon("refresh")),
+                submitButton("Update View", icon("glyphicon"))
+        )
+        
+  
+)
+
+server <- function(input, output) {
+  
+       
+}
+
+shinyApp(ui, server)
+```
+
+
+## Step 5 plotly plot 
+```{r check_box}
+library(hflights)
+library(shiny)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(lubridate)
+data(hflights)
+hflights$mmddyy <- paste(hflights$Year,hflights$Month,hflights$DayofMonth, sep = "-")
+hflights$mmddyy <- ymd(hflights$mmddyy)
+
+
+lut <- c("AA" = "American", "AS" = "Alaska", "B6" = "JetBlue", "CO" = "Continental", 
+         "DL" = "Delta", "OO" = "SkyWest", "UA" = "United", "US" = "US_Airways", 
+         "WN" = "Southwest", "EV" = "Atlantic_Southeast", "F9" = "Frontier", 
+         "FL" = "AirTran", "MQ" = "American_Eagle", "XE" = "ExpressJet", "YV" = "Mesa")
+
+hflights$UniqueCarrier <- lut[hflights$UniqueCarrier]
+
+
+ui <- fluidPage(
+        splitLayout(  
+                checkboxGroupInput("cb", "Select Air Carriers of Interest", choices = unique(hflights$UniqueCarrier), 
+                             selected = unique(hflights$UniqueCarrier)[1],inline = FALSE),
+                submitButton("Update View", icon("refresh")),
+                
+                plotlyOutput("scatter")
+                
+        )
+        
+  
+)
+
+server <- function(input, output) {
+  
+        
+}
+
+shinyApp(ui, server)
+```
+
+
+## Step 6 Output 
+```{r check_box}
+library(hflights)
+library(shiny)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(lubridate)
+data(hflights)
+hflights$mmddyy <- paste(hflights$Year,hflights$Month,hflights$DayofMonth, sep = "-")
+hflights$mmddyy <- ymd(hflights$mmddyy)
+
+
+lut <- c("AA" = "American", "AS" = "Alaska", "B6" = "JetBlue", "CO" = "Continental", 
+         "DL" = "Delta", "OO" = "SkyWest", "UA" = "United", "US" = "US_Airways", 
+         "WN" = "Southwest", "EV" = "Atlantic_Southeast", "F9" = "Frontier", 
+         "FL" = "AirTran", "MQ" = "American_Eagle", "XE" = "ExpressJet", "YV" = "Mesa")
+
+hflights$UniqueCarrier <- lut[hflights$UniqueCarrier]
+
+
+ui <- fluidPage(
+        splitLayout(  
+                checkboxGroupInput("cb", "Select Air Carriers of Interest", choices = unique(hflights$UniqueCarrier), 
+                             selected = unique(hflights$UniqueCarrier)[1],inline = FALSE),
+                submitButton("Update View", icon("refresh")),
+                
+                plotlyOutput("scatter")
+                
+        )
+        
+  
+)
+
+server <- function(input, output) {
+  
+        filtered_data <- reactive({filter(hflights, UniqueCarrier == input$cb)})
+        output$scatter <- renderPlotly({
+                p <- ggplot(filtered_data(), aes(x =ArrDelay, y = DepDelay,color=UniqueCarrier ))+geom_point()+
+                        theme_bw()
+                ggplotly(p)
+        })
+}
+
+shinyApp(ui, server)
+```
