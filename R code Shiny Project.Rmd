@@ -7,13 +7,14 @@ output: html_document
 
 #Step 1: Data Cleansing 
 ```{r step1_data_cleansing}
-library(hflights)
 library(shiny)
 library(dplyr)
 library(ggplot2)
 library(plotly)
 library(lubridate)
 library(Hmisc)
+library(readr)
+library(data.table)
 setwd('C:\\Users\\Dolomite\\Desktop\\Analytics\\901\\Shiny Project')
 
 ```
@@ -22,17 +23,19 @@ setwd('C:\\Users\\Dolomite\\Desktop\\Analytics\\901\\Shiny Project')
 ```{r step1_data_cleansing}
 
 # Create an object with the names of each column header 
-parkCols <- read_csv("parking-violations-issued-fiscal-year-2018.csv", n_max = 1, col_names=FALSE)
+parkCols <- c(read_csv("Parking_Violations_Issued_-_Fiscal_Year_2019.csv", n_max = 1, col_names=FALSE))
 
 
-# Determine if any columns should be dropped because they're empty, or do not provide info. Define the remaining columns
+# Determine if any columns should be dropped because they're empty, or do not provide info. 
+# Define the remaining columns to keep for subsequent cleansing
+
 dropCols <- list()
 keepCols <-list()
 counter <- 0
 elsecounter <-0
 for (i in parkCols){
   counter <- counter + 1
-  park <- fread("parking-violations-issued-fiscal-year-2018.csv", select = i, nrows = 5000)
+  park <- fread("Parking_Violations_Issued_-_Fiscal_Year_2019.csv", select = i)
   if ((sum(is.na(park))/count(park))>0.99){
     dropCols[counter]<-i
   }else if (count(park)==n_distinct(park)){
@@ -42,47 +45,220 @@ for (i in parkCols){
     keepCols[elsecounter]<-i}
 } 
 
+# through previous exploration of the dataset, create a list of non-desired columns
+# a list of columns to drop due to sparcity, lack of data glossary/dictionary, lack of interest
+
+# since  this is  areasonably large dataset, to reduce the load time a list of desired columns and undesired columns is made
+# this is converted to a series of NA and NULL values in a list to set as the colClasses parameter in read.csv below
+# NULL values are read, NA values are omitted
+drops <- c("From Hours In Effect", "To Hours In Effect", "Violation Legal Code", "Time First Observed", "Date First Observed", "Meter Number", "Law Section", "Sub Division", "Violation Post Code", "Vehicle Expiration Date", "Street Code1", "Street Code2", "Street Code3", "Issuer Code", "Issuer Command", "Issuer Squad", "Days Parking In Effect", "Violation In Fornt Of Or Opposite", "Unregistered Vehicle?")
+check <- (parkCols %in% keepCols )
+check2 <- !parkCols %in% drops
+shorterLoad <- check+check2
+shorter <- list()
+for (i in (1: length(shorterLoad))){
+  if ((shorterLoad[i]==2)) {
+    shorter[i]<-NA}else{
+      shorter[i]<-"NULL"
+    }
+  }
 
 
-# append(1:5, 0:1, after = 3)
-# lapply(park, MARGIN = 2, count(is.na(park)))
-# typeof(parkCols)  # }
-# sum(is.na(park))
-# count(park)
-# parkCols <- read_csv("parking-violations-issued-fiscal-year-2018.csv", n_max = 1, col_names=FALSE)
+!unlist(keepCols) %in% drops
+# remove the drops from the keepCols list of columns to keep
+keepCols <-keepCols[!(unlist(keepCols) %in% drops)]
+print(check)
+print(check2)
+check+check2
 ```
 
+#Step 1: Data Cleansing - Continued
+```{r step1_data_cleansing}
+#################################################################################
+#################################################################################
+# Create a dataframe with only the columns of possible interest
+#################################################################################
+
+# First time through only
+# df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019.csv",  col_names=TRUE)[,c(unlist(keepCols))]
+# newCols <- colnames(df)
+# 
+# write.csv(df, file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short.csv")
+
+df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short.csv", col_names = TRUE)
+```
+
+#Step 1: Data Cleansing - Continued
+```{r step1_data_cleansing}
+
+# write.csv(df[20000:20200,], file = "MyData.csv")
+# write.csv(check, file = "MyData2.csv")
+
+# list the columns that must include data  in order to be included for analysis
+# mustBe = c("Plate ID" ,"Registration State", "Plate Type", "Issue Date", "Violation Code", "Vehicle Body Type", "Vehicle Make")
+###df1 <- df[complete.cases(df[ , mustBe]),] 
+
+# 
+# check <-df[20000:20020,]
+
+# parse_datetime(check$`Violation Time`, "%I%M%p")
+# df$`Violation Time`[0:100]
+
+#################################################################################
+#################################################################################
+# Clean up Violation Time entry
+#################################################################################
+options(warn=-1)
+# If the entry has a 'P' at the end, remove it, and add 1100 to create a 24h time with no colon separator (creates NA if no P)
+step1 =suppressWarnings(as.integer(strsplit(df$`Violation Time`, "P"))+1100)
+```
+
+```{r step1_data_cleansing}
+
+# If the entry has a 'A' at the end, remove it, to create a 24h time with no colon separator (creates NA if no A)
+step2 = suppressWarnings(as.integer(strsplit(df$`Violation Time`, "A")))
+options(warn=0)
+# Replace the NA values with 0
+```
+
+```{r step1_data_cleansing}
+step1[is.na(step1)] <- 0
+step2[is.na(step2)] <- 0
+```
+
+```{r step1_data_cleansing}
+# Combine the previous values
+step3 <- step1+step2
+
+# Change the format from #### to ##:##
+df$`Violation Time`<-substr(as.POSIXct(sprintf("%04.0f", step3), format='%H%M'), 12, 16)
+
+### Not sure if needed, but this converts it to a lubridate class object
+hm(df$`Violation Time`)
+
+rm(step1, step2, step3)
+
+#################################################################################
+#################################################################################
+# Clean up/Create an 'Address' entry
+#################################################################################
+
+# create a function that, if there is no house number,  pastes together the street name + and + intersecting street + county + NY, USA, otherwise it pastes together the house number + street name + county + NY, USA,
+
+addr <- function(house_number, street_name, intersecting_street, county) {
+  if (is.na(house_number)){ return(paste(street_name,'and', intersecting_street, county, ', NY, USA'))
+    }else{ return(paste(house_number, street_name, county, ', NY, USA'))}
+}
+
+# make a look-up table for the counties. Missing values are not imputed (only 12,601 of ~2.8M)
+lut <- c('BK'='Brooklyn', 'K' = 'Brooklyn', 'BX' = 'Bronx', 'MN' = 'Manhattan', 'NY' = 'New York', 'Q' = 'Queens', 'QN' = 'Queens', 'R' = 'Roosevelt Island', 'ST' = 'Staten Island')
+
+# apply the look-up table
+df$`Violation County` <- lut[df$`Violation County`]
+
+# impute New York for missing county information
+df$`Violation County`[is.na(df$`Violation County`)] <- "New York"
+
+# apply the address function to the dataset, creating a new column
+df$address <-mapply( addr, df$`House Number`, df$`Street Name`, df$`Intersecting Street`, df$`Violation County`)
+
+#################################################################################
+#################################################################################
+# 
+#################################################################################
+write.csv(df, file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv")
+
+```
+
+```{r UI_frameowrk}
+## Taking a look at the violation code 6 as it has two values, one for first offense, and another for subsequent offenses
+## for now, the first offense value will be given, since there are not too many repeat offenders
+
+# check <-df %>%
+#   filter(`Violation Code`==6)# %>%
+#   summarise(n=n()) #%>%
+# 
+#   check %>%
+#   group_by(`Plate ID`) %>%
+#   summarise(n=n()) %>%
+#   arrange(desc(n))
+#   
+# df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv", col_names = TRUE)
+
+violationCodes <- read_csv(file = 'DOF_Parking_Violation_Codes_cleaned.csv')
+                           
+# check <- df[12001:12201,]                           
+df <- left_join(df, violationCodes, by = c("Violation Code" = "CODE") )                          
+
+# define the fines for unknown codes as $0   For example code 41, which is not even defined on the website https://www1.nyc.gov/site/finance/vehicles/services-violation-codes.page
+df$`Manhattan 96th St. and below`[is.na(df$`Manhattan 96th St. and below`)] <- 0
+df$`All Other Areas`[is.na(df$`All Other Areas`)] <- 0
+
+# for (i in (1:nrow(check2))){
+#   if (check2$`Violation Code`[i]=='MN') {
+#     check2$fine[i] <- check2$`Manhattan 96th St. and below`[i]
+#   }else{
+#     check2$fine[i] <- check2$`All Other Areas`[i]
+#   }
+#   }
+
+write.csv(df, file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv")
+```
+
+```{r UI_framework}
+df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv", col_names = TRUE)
+write.csv(df, file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv")
+```
 
 # Step 2 UI framework
 ```{r UI_frameowrk}
-library(hflights)
 library(shiny)
 library(dplyr)
 library(ggplot2)
 library(plotly)
 library(lubridate)
-data(hflights)
-hflights$mmddyy <- paste(hflights$Year,hflights$Month,hflights$DayofMonth, sep = "-")
-hflights$mmddyy <- ymd(hflights$mmddyy)
+data(check)
 
-
-
-lut <- c("AA" = "American", "AS" = "Alaska", "B6" = "JetBlue", "CO" = "Continental", "DL" = "Delta", "OO" = "SkyWest", "UA" = "United", "US" = "US_Airways", "WN" = "Southwest", "EV" = "Atlantic_Southeast", "F9" = "Frontier", "FL" = "AirTran", "MQ" = "American_Eagle", "XE" = "ExpressJet", "YV" = "Mesa")
-
-hflights$UniqueCarrier <- lut[hflights$UniqueCarrier]
-
+# df1<-df
+# # df<-df[1:100,]
+# selectInput(inputId = "y", 
+#                   label = "Y-axis:",
+#                   choices = c("IMDB rating" = "imdb_rating", 
+#                               "IMDB number of votes" = "imdb_num_votes", 
+#                               "Critics Score" = "critics_score", 
+#                               "Audience Score" = "audience_score", 
+#                               "Runtime" = "runtime"), 
+#                   selected = "audience_score"),
 
 ui <- fluidPage(
-       splitLayout()
+        sidebarLayout(  
+                sidebarPanel  (
+                  
+                  checkboxGroupInput("checkbox", "Select Locations", choices = unique(df$`Violation County`), 
+                             selected = unique(df$`Violation County`)[1],inline = FALSE)#, 
+    
+                  # dateRangeInput(inputId, label,start, end, min, max, format,startview, weekstart, language,separator)              
+                  # actionButton("checkbox", "Go!!")
+                  # dateRangeInput("Issue Date", label="Issue Date", start = "01/01/2018", end="12/31/2018", min = "01/01/2018", max="12/31/2018", format=mmddyyyy, separator = "/", pre, post)
+                  ),
+                   
+                mainPanel  (plotlyOutput("histogram"))
+        )
+)        
         
   
-)
 
-server <- function(input, output) {
+
+server <- function(input, output) {filtered_data <- reactive({filter(df, `Violation County` == input$checkbox)})
+        output$histogram   <- renderPlotly({
+                p <- ggplot(filtered_data(), aes(x = (`Issue Date`)))+geom_bar(size=10)+
+                        theme_bw()
+                ggplotly(p)
+        })
   
 }
 
-shinyApp(ui, server)
+shinyApp(ui = ui, server = server)
 
 ```
 
@@ -256,6 +432,83 @@ server <- function(input, output) {
                 ggplotly(p)
         })
 }
+#####################
 
+####################
+shinyApp(ui, server)
+```
+
+```{r check_box}
+library(shiny)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(lubridate)
+
+# ui <- fluidPage(
+#         splitLayout(  
+#                 checkboxGroupInput("cb", "Select Air Carriers of Interest", choices = unique(hflights$UniqueCarrier), 
+#                              selected = unique(hflights$UniqueCarrier)[1],inline = FALSE),
+#                 submitButton("Update View", icon("refresh")),
+#                 
+#                 plotlyOutput("scatter")
+#                 
+#         )
+#         
+#   
+# )
+library(datasets) 
+ui <- fluidPage(    
+  
+  # Give the page a title
+  titlePanel("Tickets per Borough"),
+  
+  # Generate a row with a sidebar
+  sidebarLayout(      
+    
+    # Define the sidebar with one input
+    sidebarPanel(
+      selectInput("county", "County:", 
+                  choices=check$`Violation County`),
+      hr(),
+      helpText("Data from AT&T (1961) The World's Telephones.")
+    ),
+    
+    # Create a spot for the barplot
+    mainPanel(
+      plotOutput("phonePlot")  
+    )
+    
+  )
+)
+
+server <- function(input, output) {
+  
+  # Fill in the spot we created for a plot
+  output$phonePlot <- renderPlot({
+    
+    # Render a barplot
+    barplot(WorldPhones[,input$county], 
+            main=input$county,
+            ylab="Number of Telephones",
+            xlab="Year")
+  })
+}
+
+# server <- function(input, output) {
+#   
+#   # Fill in the spot we created for a plot
+#   output$phonePlot <- renderPlot({
+#     
+#     # Render a barplot
+#     barplot(WorldPhones[,input$region]*1000, 
+#             main=input$region,
+#             ylab="Number of Telephones",
+#             xlab="Year")
+#   })
+# }
+#####################
+
+####################
 shinyApp(ui, server)
 ```
