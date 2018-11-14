@@ -219,18 +219,18 @@ write.csv(df, file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.
 ```{r check_box}
 # df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv", col_names = TRUE)
  
-# library(shiny)
-# library(dplyr)
-# library(ggplot2)
-# library(plotly)
-# library(lubridate)
-# library(leaflet)
-# library(scales)
-# library(lattice)
-# library(htmlwidgets)
-# library(RColorBrewer)
-# library(shinyWidgets)
-# data(check)
+library(shiny)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(lubridate)
+library(leaflet)
+library(scales)
+library(lattice)
+library(htmlwidgets)
+library(RColorBrewer)
+library(shinyWidgets)
+data(check)
 # df$`Violation Code`
 # df1<-df
 # df<-df1[1:1000,]
@@ -421,8 +421,7 @@ shinyApp(ui = ui, server = server)
 
 
 ```{r final}
-df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv", col_names = TRUE)
-violationCodes <- read_csv(file = 'DOF_Parking_Violation_Codes_cleaned.csv')
+library(readr)
 library(shiny)
 library(dplyr)
 library(ggplot2)
@@ -434,6 +433,10 @@ library(lattice)
 library(htmlwidgets)
 library(RColorBrewer)
 library(shinyWidgets)
+library(Hmisc)
+library(data.table)
+# df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv", col_names = TRUE)
+# violationCodes <- read_csv(file = 'DOF_Parking_Violation_Codes_cleaned.csv')
 
 ui <- fluidPage(
         titlePanel("New York City Parking Violations"),
@@ -455,7 +458,8 @@ ui <- fluidPage(
                         tabPanel("Violation Code Definitions", dataTableOutput("violationtable")),
                         tabPanel("Map", leafletOutput("map")),
                         tabPanel("Revenue", textOutput("revenue")),
-                        tabPanel("ReadMe", textOutput("readme"))
+                        tabPanel("ReadMe", (verticalLayout(helpText(a("Click Here For Description of NYC Parking", href="https://www.youtube.com/watch?v=UeHcZnvUIeE")
+              ),textOutput("readme"))))
                                 ))
 
 server <- function(input, output, session){
@@ -505,169 +509,7 @@ server <- function(input, output, session){
 
 shinyApp(ui = ui, server = server)
 ```
-## Step 5 plotly plot 
-```{r check_box}
-library(hflights)
-library(shiny)
-library(dplyr)
-library(ggplot2)
-library(plotly)
-library(lubridate)
-data(hflights)
-hflights$mmddyy <- paste(hflights$Year,hflights$Month,hflights$DayofMonth, sep = "-")
-hflights$mmddyy <- ymd(hflights$mmddyy)
 
 
-lut <- c("AA" = "American", "AS" = "Alaska", "B6" = "JetBlue", "CO" = "Continental", 
-         "DL" = "Delta", "OO" = "SkyWest", "UA" = "United", "US" = "US_Airways", 
-         "WN" = "Southwest", "EV" = "Atlantic_Southeast", "F9" = "Frontier", 
-         "FL" = "AirTran", "MQ" = "American_Eagle", "XE" = "ExpressJet", "YV" = "Mesa")
-
-hflights$UniqueCarrier <- lut[hflights$UniqueCarrier]
 
 
-ui <- fluidPage(
-        splitLayout(  
-                checkboxGroupInput("cb", "Select Air Carriers of Interest", choices = unique(hflights$UniqueCarrier), 
-                             selected = unique(hflights$UniqueCarrier)[1],inline = FALSE),
-                submitButton("Update View", icon("refresh")),
-                
-                plotlyOutput("scatter")
-                
-        )
-        
-  
-)
-
-server <- function(input, output) {
-  
-        
-}
-
-shinyApp(ui, server)
-```
-
-
-## Step 6 Output 
-```{r check_box}
-library(hflights)
-library(shiny)
-library(dplyr)
-library(ggplot2)
-library(plotly)
-library(lubridate)
-data(hflights)
-hflights$mmddyy <- paste(hflights$Year,hflights$Month,hflights$DayofMonth, sep = "-")
-hflights$mmddyy <- ymd(hflights$mmddyy)
-
-
-lut <- c("AA" = "American", "AS" = "Alaska", "B6" = "JetBlue", "CO" = "Continental", 
-         "DL" = "Delta", "OO" = "SkyWest", "UA" = "United", "US" = "US_Airways", 
-         "WN" = "Southwest", "EV" = "Atlantic_Southeast", "F9" = "Frontier", 
-         "FL" = "AirTran", "MQ" = "American_Eagle", "XE" = "ExpressJet", "YV" = "Mesa")
-
-hflights$UniqueCarrier <- lut[hflights$UniqueCarrier]
-
-
-ui <- fluidPage(
-        splitLayout(  
-                checkboxGroupInput("cb", "Select Air Carriers of Interest", choices = unique(hflights$UniqueCarrier), 
-                             selected = unique(hflights$UniqueCarrier)[1],inline = FALSE),
-                submitButton("Update View", icon("refresh")),
-                
-                plotlyOutput("scatter")
-                
-        )
-        
-  
-)
-
-server <- function(input, output) {
-  
-        filtered_data <- reactive({filter(hflights, UniqueCarrier == input$cb)})
-        output$scatter <- renderPlotly({
-                p <- ggplot(filtered_data(), aes(x =ArrDelay, y = DepDelay,color=UniqueCarrier ))+geom_point()+
-                        theme_bw()
-                ggplotly(p)
-        })
-}
-#####################
-
-####################
-shinyApp(ui, server)
-```
-
-```{r check_box}
-library(shiny)
-library(dplyr)
-library(ggplot2)
-library(plotly)
-library(lubridate)
-
-# ui <- fluidPage(
-#         splitLayout(  
-#                 checkboxGroupInput("cb", "Select Air Carriers of Interest", choices = unique(hflights$UniqueCarrier), 
-#                              selected = unique(hflights$UniqueCarrier)[1],inline = FALSE),
-#                 submitButton("Update View", icon("refresh")),
-#                 
-#                 plotlyOutput("scatter")
-#                 
-#         )
-#         
-#   
-# )
-library(datasets) 
-ui <- fluidPage(    
-  
-  # Give the page a title
-  titlePanel("Tickets per Borough"),
-  
-  # Generate a row with a sidebar
-  sidebarLayout(      
-    
-    # Define the sidebar with one input
-    sidebarPanel(
-      selectInput("county", "County:", 
-                  choices=check$`Violation County`),
-      hr(),
-      helpText("Data from AT&T (1961) The World's Telephones.")
-    ),
-    
-    # Create a spot for the barplot
-    mainPanel(
-      plotOutput("phonePlot")  
-    )
-    
-  )
-)
-
-server <- function(input, output) {
-  
-  # Fill in the spot we created for a plot
-  output$phonePlot <- renderPlot({
-    
-    # Render a barplot
-    barplot(WorldPhones[,input$county], 
-            main=input$county,
-            ylab="Number of Telephones",
-            xlab="Year")
-  })
-}
-
-# server <- function(input, output) {
-#   
-#   # Fill in the spot we created for a plot
-#   output$phonePlot <- renderPlot({
-#     
-#     # Render a barplot
-#     barplot(WorldPhones[,input$region]*1000, 
-#             main=input$region,
-#             ylab="Number of Telephones",
-#             xlab="Year")
-#   })
-# }
-#####################
-
-####################
-shinyApp(ui, server)
-```
