@@ -131,7 +131,7 @@ step3 <- step1+step2
 df$`Violation Time`<-substr(as.POSIXct(sprintf("%04.0f", step3), format='%H%M'), 12, 16)
 
 ### Not sure if needed, but this converts it to a lubridate class object
-hm(df$`Violation Time`)
+# hm(df$`Violation Time`)
 
 rm(step1, step2, step3)
 
@@ -147,7 +147,7 @@ addr <- function(house_number, street_name, intersecting_street, county) {
     if (!is.na(intersecting_street)){
       return(paste(street_name,'and', intersecting_street, county, ', NY, USA'))
     }else{
-      return(paste(street_name, intersecting_street, county, ', NY, USA'))}}
+      return(paste(street_name, county, ', NY, USA'))}}
   else{
     return(paste(house_number, street_name, county, ', NY, USA'))}
 }
@@ -203,320 +203,33 @@ df$`All Other Areas`[is.na(df$`All Other Areas`)] <- 0
 #     check2$fine[i] <- check2$`All Other Areas`[i]
 #   }
 #   }
-
+df$`Issue Date`<- mdy(df$`Issue Date`)
 write.csv(df, file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv")
 ```
 
 ```{r UI_framework}
-df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv", col_names = TRUE)
-write.csv(df, file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv")
+# df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv", col_names = TRUE)
+# df$`Issue Date`<- mdy(df$`Issue Date`)
+# write.csv(df, file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv")
 ```
+```{r}
 
-# Step 2 UI framework
-```{r UI_frameowrk}
-library(shiny)
-library(dplyr)
-library(ggplot2)
-library(plotly)
-library(lubridate)
-data(check)
-
-# df1<-df
-# # df<-df[1:100,]
-
-ui <- fluidPage(
-        sidebarLayout(  
-                sidebarPanel  (
-                  
-                  checkboxGroupInput(inputId = "checkbox", label ="Select Locations", choices = unique(df$`Violation County`), 
-                             selected = unique(df$`Violation County`)[1],inline = FALSE), 
-    
-                  dateRangeInput(inputId = "issueDate", label = "Issue Date",start = mdy("01/01/2018"), end = mdy("12/31/2018"), min = "01/01/18", max = "1/1/2019", format = "mm/dd/yyyy" ),
-                  
-                  submitButton("issueDate", "Go!!")
-                  # dateRangeInput("Issue Date", label="Issue Date", start = "01/01/2018", end="12/31/2018", min = "01/01/2018", max="12/31/2018", format=mmddyyyy, separator = "/", pre, post)
-                  ),
-                   
-                mainPanel  (plotlyOutput("histogram"))
-        )
-)        
-        
-  
-server <- function(input, output) 
-  
-  {filtered_data <- reactive({df %>% filter( `Violation County` == input$checkbox) %>% 
-    filter( `Issue Date` >= input$issueDate[1] & `Issue Date` <= input$issueDate[2])})
-
-         ({output$histogram   <-  renderPlotly({
-                p <- ggplot(filtered_data(), aes(x =  df$`Issue Date`))+geom_bar(size=10)+
-                        theme_bw()
-                ggplotly(p) })
-        })
-  
-}
-
-shinyApp(ui = ui, server = server)
-
-```
-
-
-## Step 3 Checkbox 
-```{r check_box}
-library(shiny)
-library(dplyr)
-library(ggplot2)
-library(plotly)
-library(lubridate)
-data(check)
-df$`Violation Code`
-# df1<-df
-# # df<-df[1:100,]
-
-ui <- fluidPage(
-        sidebarLayout(  
-                sidebarPanel  (
-                  
-                  checkboxGroupInput(inputId = "checkbox", label ="Select Locations", choices = unique(df$`Violation County`), 
-                             selected = unique(df$`Violation County`)[1],inline = FALSE), 
-    
-                  dateRangeInput(inputId = "dateRange", label = "Issue Date",start = mdy("01/01/2018"), end = mdy("12/31/2018"), min = "01/01/18", max = "1/1/2019", format = "mm/dd/yyyy" ),
-                  
-                  selectInput(inputId = "selectInput", label = "Violation Code", choices =unique(df$`Violation Code`),selected = unique(df$`Violation Code`)[1], multiple = FALSE) #(also selectizeInput())
-                  ),
-                   
-                mainPanel  (plotlyOutput("histogram1"), plotlyOutput("histogram2"),
-                            textOutput("Boy, this is fun"))
-        )
-)        
-        
-  
-server <- function(input, output) 
-  
-  {filtered_data <- reactive({df %>% filter( `Violation County` == input$checkbox) %>% 
-    filter( `Issue Date` >= input$dateRange[1] & `Issue Date` <= input$dateRange[2]) %>%
-      filter(`Violation Code` == input$selectInput)})
-
-         output$histogram1   <-  renderPlotly({
-                p <- ggplot(filtered_data(), aes(x =  df$`Issue Date`))+geom_bar()+
-                        theme_bw()
-                ggplotly(p) })
-         output$histogram2   <-  renderPlotly({
-                p <- ggplot(filtered_data(), aes(x =  df$`Violation Code`))+geom_bar()+
-                        theme_bw()
-                ggplotly(p) })         
-        
-  
-}
-
-shinyApp(ui = ui, server = server)
-```
-
-
-## Step 3 Checkbox 
-```{r check_box}
-library(shiny)
-library(dplyr)
-library(ggplot2)
-library(plotly)
-library(lubridate)
-data(check)
-df$`Violation Code`
-# df1<-df
-# df<-df[1:100,]
-
-ui <- fluidPage(
-        sidebarLayout(  
-                sidebarPanel  (
-                  
-                  checkboxGroupInput(inputId = "checkbox", label ="Select Locations", choices = unique(df$`Violation County`), 
-                             selected = unique(df$`Violation County`)[1],inline = FALSE),
-                submitButton("Update View", icon("refresh")), 
-    
-                  dateRangeInput(inputId = "dateRange", label = "Issue Date",start = mdy("01/01/2018"), end = mdy("12/31/2018"), min = "01/01/18", max = "1/1/2019", format = "mm/dd/yyyy" ),
-                submitButton("Update View", icon("refresh")),
-                
-                  selectInput(inputId = "selectInput", label = "Violation Code", choices =unique(df$`Violation Code`),selected = unique(df$`Violation Code`)[1], multiple = FALSE) #(also selectizeInput())
-                  ),
-                   
-                mainPanel ( 
-                  tabsetPanel(type = "tabs",
-                        tabPanel("Plot", plotlyOutput("histogram1")),
-                        tabPanel("Plot2", plotlyOutput("histogram2")),
-                        tabPanel("Revenue", verbatimTextOutput("revenue"))
-                        # (plotlyOutput("histogram1"),
-                        #     plotlyOutput("histogram2"),
-                        #     textOutput("Boy, this is fun"))
-        ))
-))        
-        
-  
-server <- function(input, output){
-  
-  filtered_data <- reactive({
-    df %>% filter( `Violation County` == input$checkbox) %>%
-                  filter( `Issue Date` >= input$dateRange[1] & `Issue Date` <= input$dateRange[2]) %>%
-                  filter(`Violation Code` == input$selectInput)
-    })
-
-         # output$histogram1   <-  renderPlotly({
-         #        p <- ggplot(filtered_data(), aes(x =input$checkbox))+geom_bar()+ theme_bw()
-         #        ggplotly(p) })
-        output$histogram1   <-  renderPlotly({
-                p <- ggplot(filtered_data(), aes(x =  df$`Issue Date`))+geom_bar()+
-                        theme_bw()
-                ggplotly(p) })
-
-        output$histogram2   <-  renderPlotly({
-                p <- ggplot(df, aes(x =  df$`Violation Code`))+geom_bar()+
-                        theme_bw()
-                ggplotly(p) })
-
-         output$revenue <- renderPrint(sum(as.integer(df$`All Other Areas`)))
-}
-  
-# flights_by_month <- mydata %>%
-#         group_by(month)%>%
-#         summarise(n=n())
-
-shinyApp(ui = ui, server = server)
 ```
 
 ```{r check_box}
-library(shiny)
-library(dplyr)
-library(ggplot2)
-library(plotly)
-library(lubridate)
-data(check)
-df$`Violation Code`
-# df1<-df
-# df<-df[1:100,]
-
-ui <- fluidPage(
-        sidebarLayout(  
-                sidebarPanel  (
-                  
-                  checkboxGroupInput(inputId = "checkbox", label ="Select Locations", choices = unique(df$`Violation County`), 
-                             selected = unique(df$`Violation County`)[1],inline = FALSE),
-                submitButton("Update View", icon("refresh")), 
-    
-                  dateRangeInput(inputId = "dateRange", label = "Issue Date",start = mdy("01/01/2018"), end = mdy("12/31/2018"), min = "01/01/18", max = "1/1/2019", format = "mm/dd/yyyy" ),
-                submitButton("Update View", icon("refresh")),
-                
-                  selectInput(inputId = "selectInput", label = "Violation Code", choices =unique(df$`Violation Code`),selected = unique(df$`Violation Code`)[1], multiple = FALSE) #(also selectizeInput())
-                  ),
-                   
-                mainPanel ( 
-                  tabsetPanel(type = "tabs",
-                        tabPanel("Plot", plotlyOutput("histogram1")),
-                        tabPanel("Plot2", plotlyOutput("histogram2")),
-                        tabPanel("Revenue", verbatimTextOutput("revenue"))
-                                ))
-))        
-
-server <- function(input, output, session){
-  
-  filtered_data <- reactive({
-    df %>% filter( `Violation County` == input$checkbox) %>%
-                  filter( `Issue Date` >= input$dateRange[1] & `Issue Date` <= input$dateRange[2]) %>%
-                  filter(`Violation Code` == input$selectInput)
-    })
-print(filtered_data)
-        output$histogram1   <-  renderPlotly({
-                p <- ggplot(filtered_data(), aes(x =  df$`Issue Date`))+geom_bar()+
-                        theme_bw()
-                ggplotly(p) })
-
-        output$histogram2   <-  renderPlotly({
-                p <- ggplot(df, aes(x =  df$`Violation Code`))+geom_bar()+
-                        theme_bw()
-                ggplotly(p) })
-
-         output$revenue <- renderPrint(sum(as.integer(df$`All Other Areas`)))
-}
-
-
-shinyApp(ui = ui, server = server)
-```
-
-```{r check_box}
-library(shiny)
-library(dplyr)
-library(ggplot2)
-library(plotly)
-library(lubridate)
-library(leaflet)
-library(scales)
-library(lattice)
-data(check)
-df$`Violation Code`
-df1<-df
-df<-df[1:100,]
-
-ui <- fluidPage(
-        sidebarLayout(  
-                sidebarPanel  (
-                  
-                  checkboxGroupInput(inputId = "checkbox", label ="Select Locations", choices = unique(df$`Violation County`), 
-                             selected = unique(df$`Violation County`)[1],inline = FALSE),
-                submitButton("Update View", icon("refresh")), 
+# df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv", col_names = TRUE)
  
-                  selectInput(inputId = "selectInput", label = "Violation Code", choices =unique(df$`Violation Code`),selected = unique(df$`Violation Code`)[1], multiple = FALSE) #(also selectizeInput())
-                  ),
-                   
-                mainPanel ( 
-                  tabsetPanel(type = "tabs",
-                        tabPanel("Plot", plotlyOutput("histogram1")),
-                        tabPanel("Plot2", plotlyOutput("histogram2")),
-                        tabPanel("Map", plotlyOutput("map")),
-                        tabPanel("Revenue", verbatimTextOutput("revenue"))
-                                ))
-))        
-
-server <- function(input, output, session){
-  
-  filtered_data <- reactive({
-    df %>% filter( `Violation County` == input$checkbox) %>%
-                                    filter(`Violation Code` == input$selectInput)
-    })
-print(filtered_data)
-        output$histogram1   <-  renderPlotly({
-                p <- ggplot(filtered_data(), aes(x =  `Issue Date`))+geom_bar()+
-                        theme_bw()
-                ggplotly(p) })
-
-        output$histogram2   <-  renderPlotly({
-                p <- ggplot(df, aes(x =  df$`Violation Code`))+geom_bar()+
-                        theme_bw()
-                ggplotly(p) })
-
-         output$revenue <- renderPrint(sum(as.integer(df$`All Other Areas`)))
-         
-         output$map <- renderLeaflet({
-               leaflet() %>%
-                 # addTiles(
-                 #   urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
-                 #   attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>'
-                 # ) %>%
-                 setView(lng = -93.85, lat = 37.45, zoom = 4)
-             })
-}
-
-
-shinyApp(ui = ui, server = server)
-```
-```{r check_box}
-library(shiny)
-library(dplyr)
-library(ggplot2)
-library(plotly)
-library(lubridate)
-library(leaflet)
-library(scales)
-library(lattice)
-library(htmlwidgets)
-library(RColorBrewer)
-
+# library(shiny)
+# library(dplyr)
+# library(ggplot2)
+# library(plotly)
+# library(lubridate)
+# library(leaflet)
+# library(scales)
+# library(lattice)
+# library(htmlwidgets)
+# library(RColorBrewer)
+# library(shinyWidgets)
 # data(check)
 # df$`Violation Code`
 # df1<-df
@@ -527,19 +240,16 @@ ui <- fluidPage(
         sidebarLayout(  
                 sidebarPanel  (
                   
-                  checkboxGroupInput(inputId = "checkbox", label ="Select Locations", choices = unique(df$`Violation County`), selected = unique(df$`Violation County`)[1],inline = FALSE),
+                  checkboxGroupInput(inputId = "checkbox", label ="Select Locations", choices = unique(df$`Violation County`), selected = unique(df$`Violation County`)[],inline = FALSE),
                   
                   submitButton("Update View", icon("refresh")), 
  
-                  selectInput(inputId = "selectInput", label = "Violation Code", choices =unique(df$`Violation Code`),selected = unique(df$`Violation Code`)[1], multiple = TRUE) #(also selectizeInput()),
+                  pickerInput(inputId = "pickerInput", label = "Violation Code", choices =unique(df$`Violation Code`),selected = unique(df$`Violation Code`)[], multiple = TRUE, options = list(`actions-box` = TRUE, dropupAuto = TRUE, header = "Nothing selected, nothing gained",  liveSearch = TRUE,  liveSearchNormalize = TRUE,  title = NULL,
+  virtualScroll = NULL, width = NULL, windowPadding = NULL)),
                   
-                  
-                
-                # dateRangeInput("date", "Date range", start = "2018-01-01", end = "2019-01-01", min = "2018-01-01", max = "2019-01-01")
+                  dateRangeInput(inputId = "date", label = "Date range", start = "2018-1-1", end = "2018-11-11", min = "2018-01-01", max = "2018-11-11")
                   ),
 
-                
-                                   
                 mainPanel ( 
                   tabsetPanel(type = "tabs",
                         tabPanel("Plot", plotlyOutput("histogram1")),
@@ -555,7 +265,7 @@ ui <- fluidPage(
 server <- function(input, output, session){
     # filtered_data <- reactive({df %>% filter(`Violation County` %in% input$checkbox)})
 
-    filtered_data <- reactive({df %>% filter(`Violation County` %in% input$checkbox) %>% filter(`Violation Code` %in% input$selectInput)})
+    filtered_data <- reactive({df %>% filter(`Violation County` %in% input$checkbox) %>% filter(`Violation Code` %in% input$pickerInput) %>% filter(`Issue Date` %inrange% input$date )})
   
   # filtered_data <- reactive({
   #   df %>% filter( `Violation County` == input$checkbox) %>%
@@ -574,7 +284,7 @@ server <- function(input, output, session){
         output$table <- renderDataTable({filtered_data()})
         
         output$histogram3   <-  renderPlotly({
-                p <- ggplot(data = filtered_data(), aes(x = `Violation Time`))+geom_histogram(stat = "count")+
+                p <- ggplot(data = filtered_data(), aes(x = `Violation Time`))+geom_histogram(stat = "count", binwidth = 96)+
                         theme_bw()
                 ggplotly(p) })
 
@@ -599,48 +309,202 @@ shinyApp(ui = ui, server = server)
 
 ## Step 4 Submit Button 
 ```{r update_view}
-library(hflights)
+# df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv", col_names = TRUE)
+# violationCodes <- read_csv(file = 'DOF_Parking_Violation_Codes_cleaned.csv')
+# library(shiny)
+# library(dplyr)
+# library(ggplot2)
+# library(plotly)
+# library(lubridate)
+# library(leaflet)
+# library(scales)
+# library(lattice)
+# library(htmlwidgets)
+# library(RColorBrewer)
+# library(shinyWidgets)
+# data(check)
+# df$`Violation Code`
+# df1<-df
+# df<-df1[1:1000,]
+
+ui <- fluidPage(
+        titlePanel("New York City Parking Violations"),
+        verticalLayout(  
+                # sidebarPanel  (
+                  flowLayout(
+                  checkboxGroupInput(inputId = "checkbox", label ="Select Locations", choices = unique(df$`Violation County`), selected = unique(df$`Violation County`)[],inline = FALSE),
+ 
+                  pickerInput(inputId = "pickerinput", label = "Violation Code", choices =unique(df$`Violation Code`),selected = unique(df$`Violation Code`)[], multiple = TRUE, options = list(`actions-box` = TRUE, dropupAuto = TRUE, header = "Nothing selected, nothing gained",  liveSearch = TRUE,  liveSearchNormalize = TRUE,  title = NULL)),
+                  
+                  dateRangeInput(inputId = "date", label = "Date range", start = "2018-1-1", end = "2018-11-11", min = "2018-01-01", max = "2018-11-11")#,
+  
+                  # sliderInput(inputId = "slider", label = "Time of Day",  min = as.POSIXct("00:00",format="%H:%M"),
+                  #            max = as.POSIXct("24:00",format="%H:%M"),
+                  #            value = c(as.POSIXct("00:00",format="%H:%M"),as.POSIXct("24:00",format="%H:%M")
+                  #            ))
+                  )),
+  
+                  # actionButton("Engage!", icon("refresh")),
+
+                # mainPanel ( 
+                  tabsetPanel(type = "tabs",
+                        tabPanel("Tickets by Location", (verticalLayout(plotlyOutput("histogram1"), plotlyOutput("histogram1a")))  ),
+                        tabPanel("Violation Codes", plotlyOutput("histogram2")),
+                        tabPanel("Tickets by Time of Day", (verticalLayout(
+                                                             textOutput("revenue1"), 
+                                                            plotlyOutput("histogram3")))),
+                        tabPanel("Table", dataTableOutput("table")),
+                        tabPanel("Violation Code Definitions", dataTableOutput("violationtable")),
+                        tabPanel("Map", leafletOutput("map")),
+                        tabPanel("Revenue", htmlOutput("revenue")),
+                        tabPanel("ReadMe", textOutput("readme"))
+                                ))
+# ))       
+
+
+server <- function(input, output, session){
+    filtered_data <- reactive({df %>% filter(`Violation County` %in% input$checkbox) %>% filter(`Violation Code` %in% input$pickerinput) %>% filter(`Issue Date` %inrange% input$date)})
+    unfiltered_data <- reactive({df})
+
+    # filtered_data <- reactive({df %>% filter(`Violation County` %in% input$checkbox) %>% filter(`Violation Code` %in% input$pickerinput) %>% filter(`Issue Date` %inrange% input$date )})
+
+
+    violation_Codes <- reactive({violationCodes})
+  # filtered_data <- reactive({
+  #   df %>% filter( `Violation County` == input$checkbox) %>%
+  #     # filter(ymd(`Issue Date`) >= input$date[1] & ymd(`Issue Date`) <= input$date[2]) %>%
+  #                                   filter(`Violation Code` == input$selectInput)
+  #   })
+        output$histogram1   <-  renderPlotly({
+                p <- ggplot(filtered_data(), aes(x = `Violation County`))+geom_bar()
+                ggplotly(p) })
+        
+      output$histogram1a   <-  renderPlotly({
+                p <- ggplot(unfiltered_data(), aes(x = `Violation County`, fill =`Violation County`))+geom_bar()
+                ggplotly(p) })
+      
+        output$histogram2   <-  renderPlotly({
+                p <- ggplot(data = filtered_data(), aes(x = `Violation Code`))+geom_bar()+
+                        theme_bw()
+                ggplotly(p) })
+
+        output$table <- renderDataTable({filtered_data()})
+        
+        output$violationtable <- renderDataTable({violation_Codes()})
+
+        output$histogram3   <-  renderPlotly({
+                p <- ggplot(data = filtered_data(), aes(x = `Violation Time`))+geom_histogram(stat = "count", binwidth = 96)+
+                        theme_bw()
+                ggplotly(p) })
+
+         output$revenue <- renderUI({sum(as.integer(filtered_data()$`All Other Areas`))})
+         
+         output$revenue1 <- renderText({sum(as.integer(filtered_data()$`All Other Areas`))})
+
+
+         output$readme <- renderText({print("This dataset was obtained from the City of New York,   https://data.cityofnewyork.us/City-Government/Parking-Violations-Issued-Fiscal-Year-2019/pvqr-7yc4 on November 2, 2018. Its most recent update was October 16, 2018.  
+           Parking Violation Codes were obtained from https://data.ny.gov/Transportation/DOF-Parking-Violation-Codes/ncbg-6agr and https://www1.nyc.gov/site/finance/vehicles/services-violation-codes.page    Registration Class Codes can be found at https://dmv.ny.gov/registration/registration-class-codes")})
+
+         output$map <- renderLeaflet({
+             leaflet(height = 30) %>%
+                  addTiles() %>%
+                 #   urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
+                 #   attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>'
+                 # ) %>%
+                 setView(lng = -74.05, lat = 40.70, zoom = 10)  
+             })
+}
+
+# df$`Violation County`[df$`Violation County` %in% c("Bronx")]
+shinyApp(ui = ui, server = server)
+```
+
+
+```{r final}
+df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv", col_names = TRUE)
+violationCodes <- read_csv(file = 'DOF_Parking_Violation_Codes_cleaned.csv')
 library(shiny)
 library(dplyr)
 library(ggplot2)
 library(plotly)
 library(lubridate)
-data(hflights)
-hflights$mmddyy <- paste(hflights$Year,hflights$Month,hflights$DayofMonth, sep = "-")
-hflights$mmddyy <- ymd(hflights$mmddyy)
-
-
-lut <- c("AA" = "American", "AS" = "Alaska", "B6" = "JetBlue", "CO" = "Continental", 
-         "DL" = "Delta", "OO" = "SkyWest", "UA" = "United", "US" = "US_Airways", 
-         "WN" = "Southwest", "EV" = "Atlantic_Southeast", "F9" = "Frontier", 
-         "FL" = "AirTran", "MQ" = "American_Eagle", "XE" = "ExpressJet", "YV" = "Mesa")
-
-hflights$UniqueCarrier <- lut[hflights$UniqueCarrier]
-
+library(leaflet)
+library(scales)
+library(lattice)
+library(htmlwidgets)
+library(RColorBrewer)
+library(shinyWidgets)
 
 ui <- fluidPage(
-        splitLayout(  
-                checkboxGroupInput("cb", "Select Air Carriers of Interest", choices = unique(hflights$UniqueCarrier), 
-                             selected = unique(hflights$UniqueCarrier)[1],inline = FALSE),
-                submitButton("Update View", icon("bar-chart-o")),
-                submitButton("Update View", icon("list-alt")),
-                submitButton("Update View", icon("table")),
-                submitButton("Update View", icon("refresh")),
-                submitButton("Update View", icon("glyphicon"))
-        )
-        
+        titlePanel("New York City Parking Violations"),
+        verticalLayout(  
+                  flowLayout(
+                  checkboxGroupInput(inputId = "checkbox", label ="Select Locations", choices = unique(df$`Violation County`), selected = unique(df$`Violation County`)[],inline = FALSE),
+ 
+                  pickerInput(inputId = "pickerinput", label = "Violation Code", choices =sort(unique(df$`Violation Code`)),selected = unique(df$`Violation Code`)[], multiple = TRUE, options = list(`actions-box` = TRUE, dropupAuto = TRUE, header = "Nothing selected, nothing gained",  liveSearch = TRUE,  liveSearchNormalize = TRUE,  title = NULL )),
+                  
+                  dateRangeInput(inputId = "date", label = "Date range", start = "2018-1-1", end = "2018-11-11", min = "2018-01-01", max = "2018-11-11"))),
   
-)
+                  tabsetPanel(type = "tabs",
+                        tabPanel("Tickets by Location", (verticalLayout(plotlyOutput("histogram1"), plotlyOutput("histogram1a")))  ),
+                        tabPanel("Violation Codes", plotlyOutput("histogram2")),
+                        tabPanel("Tickets by Time of Day", (verticalLayout(
+                                                             textOutput("revenue1"), 
+                                                            plotlyOutput("histogram3")))),
+                        tabPanel("Table", dataTableOutput("table")),
+                        tabPanel("Violation Code Definitions", dataTableOutput("violationtable")),
+                        tabPanel("Map", leafletOutput("map")),
+                        tabPanel("Revenue", textOutput("revenue")),
+                        tabPanel("ReadMe", textOutput("readme"))
+                                ))
 
-server <- function(input, output) {
-  
-       
+server <- function(input, output, session){
+    filtered_data <- reactive({df %>% filter(`Violation County` %in% input$checkbox) %>% filter(`Violation Code` %in% input$pickerinput) %>% filter(`Issue Date` %inrange% input$date)})
+    unfiltered_data <- reactive({df})
+
+    violation_Codes <- reactive({violationCodes})
+        output$histogram1   <-  renderPlotly({
+                p <- ggplot(filtered_data(), aes(x = `Violation County`))+geom_bar()
+                ggplotly(p) })
+        
+      output$histogram1a   <-  renderPlotly({
+                p <- ggplot(unfiltered_data(), aes(x = `Violation County`, fill =`Violation County`))+geom_bar()
+                ggplotly(p) })
+      
+        output$histogram2   <-  renderPlotly({
+                p <- ggplot(data = filtered_data(), aes(x = `Violation Code`))+geom_bar()+
+                        theme_bw()
+                ggplotly(p) })
+
+        output$table <- renderDataTable({filtered_data()})
+        
+        output$violationtable <- renderDataTable({violation_Codes()})
+
+        output$histogram3   <-  renderPlotly({
+                p <- ggplot(data = filtered_data(), aes(x = `Violation Time`))+geom_histogram(stat = "count", binwidth = 96)+
+                        theme_bw()
+                ggplotly(p) })
+
+         output$revenue <- renderText({sum(as.integer(filtered_data()$`All Other Areas`))})
+         
+         output$revenue1 <- renderText({sum(as.integer(filtered_data()$`All Other Areas`))})
+
+
+         output$readme <- renderText({print("This dataset was obtained from the City of New York,   https://data.cityofnewyork.us/City-Government/Parking-Violations-Issued-Fiscal-Year-2019/pvqr-7yc4 on November 2, 2018. Its most recent update was October 16, 2018.  
+           Parking Violation Codes were obtained from https://data.ny.gov/Transportation/DOF-Parking-Violation-Codes/ncbg-6agr and https://www1.nyc.gov/site/finance/vehicles/services-violation-codes.page    Registration Class Codes can be found at https://dmv.ny.gov/registration/registration-class-codes")})
+
+         output$map <- renderLeaflet({
+             leaflet(height = 30) %>%
+                  addTiles() %>%
+                 #   urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
+                 #   attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>'
+                 # ) %>%
+                 setView(lng = -74.05, lat = 40.70, zoom = 10)  
+             })
 }
 
-shinyApp(ui, server)
+shinyApp(ui = ui, server = server)
 ```
-
-
 ## Step 5 plotly plot 
 ```{r check_box}
 library(hflights)
