@@ -4,7 +4,13 @@ author: "Jared Fortier"
 date: "2018 M11 5"
 output: html_document
 ---
+``` {r}
+# This document contains the cleaning steps and iterative building of a shiny app for the NYC Parking Violation data
+# the data was stored locally but can be accessed at https://data.cityofnewyork.us/City-Government/Parking-Violations-Issued-Fiscal-Year-2019/pvqr-7yc4
 
+
+
+```
 #Step 1: Data Cleansing 
 ```{r step1_data_cleansing}
 library(shiny)
@@ -78,6 +84,8 @@ check+check2
 #################################################################################
 # Create a dataframe with only the columns of possible interest
 #################################################################################
+# Files are occasionally created//loaded to avoid needing to run the entire cleansing every time during the development of the app
+# These steps are not absolutely necessary
 
 # First time through only
 # df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019.csv",  col_names=TRUE)[,c(unlist(keepCols))]
@@ -85,26 +93,17 @@ check+check2
 # 
 # write.csv(df, file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short.csv")
 
-df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short.csv", col_names = TRUE)
+# df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short.csv", col_names = TRUE)
 ```
 
 #Step 1: Data Cleansing - Continued
 ```{r step1_data_cleansing}
 
-
-# list the columns that must include data  in order to be included for analysis
-# mustBe = c("Plate ID" ,"Registration State", "Plate Type", "Issue Date", "Violation Code", "Vehicle Body Type", "Vehicle Make")
-###df1 <- df[complete.cases(df[ , mustBe]),] 
-
-
-# parse_datetime(check$`Violation Time`, "%I%M%p")
-# df$`Violation Time`[0:100]
-
 #################################################################################
 #################################################################################
 # Clean up Violation Time entry
 #################################################################################
-options(warn=-1)
+
 # If the entry has a 'P' at the end, remove it, and add 1100 to create a 24h time with no colon separator (creates NA if no P)
 step1 =suppressWarnings(as.integer(strsplit(df$`Violation Time`, "P"))+1100)
 ```
@@ -113,7 +112,7 @@ step1 =suppressWarnings(as.integer(strsplit(df$`Violation Time`, "P"))+1100)
 
 # If the entry has a 'A' at the end, remove it, to create a 24h time with no colon separator (creates NA if no A)
 step2 = suppressWarnings(as.integer(strsplit(df$`Violation Time`, "A")))
-options(warn=0)
+
 # Replace the NA values with 0
 ```
 
@@ -130,14 +129,11 @@ step3 <- step1+step2
 # Change the format from #### to ##:##
 df$`Violation Time`<-substr(as.POSIXct(sprintf("%04.0f", step3), format='%H%M'), 12, 16)
 
-### Not sure if needed, but this converts it to a lubridate class object
-# hm(df$`Violation Time`)
-
 rm(step1, step2, step3)
 
 #################################################################################
 #################################################################################
-# Clean up/Create an 'Address' entry
+# Clean up/Create an 'Address' entry and adding additional features
 #################################################################################
 
 # create a function that, if there is no house number,  pastes together the street name + and + intersecting street + county + NY, USA, otherwise it pastes together the house number + street name + county + NY, USA,
@@ -168,11 +164,15 @@ df$address <-mapply( addr, df$`House Number`, df$`Street Name`, df$`Intersecting
 #################################################################################
 # 
 #################################################################################
-write.csv(df, file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv")
+
+## convert type of column for later use in the Shiny app
+df$`Issue Date`<- mdy(df$`Issue Date`)
+
+# write.csv(df, file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv")
 
 ```
 
-```{r UI_frameowrk}
+```{r step 1 - cleansing}
 ## Taking a look at the violation code 6 as it has two values, one for first offense, and another for subsequent offenses
 ## for now, the first offense value will be given, since there are not too many repeat offenders
 
@@ -187,6 +187,10 @@ write.csv(df, file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.
 #   
 # df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv", col_names = TRUE)
 
+#################################################################################
+#################################################################################
+# Combine Violation Code definition file to violation records (additional features)
+#################################################################################
 violationCodes <- read_csv(file = 'DOF_Parking_Violation_Codes_cleaned.csv')
                            
 # check <- df[12001:12201,]                           
@@ -196,228 +200,19 @@ df <- left_join(df, violationCodes, by = c("Violation Code" = "CODE") )
 df$`Manhattan 96th St. and below`[is.na(df$`Manhattan 96th St. and below`)] <- 0
 df$`All Other Areas`[is.na(df$`All Other Areas`)] <- 0
 
-# for (i in (1:nrow(check2))){
-#   if (check2$`Violation Code`[i]=='MN') {
-#     check2$fine[i] <- check2$`Manhattan 96th St. and below`[i]
-#   }else{
-#     check2$fine[i] <- check2$`All Other Areas`[i]
-#   }
-#   }
 df$`Issue Date`<- mdy(df$`Issue Date`)
-write.csv(df, file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv")
+# write.csv(df, file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv")
 ```
 
 ```{r UI_framework}
 # df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv", col_names = TRUE)
-# df$`Issue Date`<- mdy(df$`Issue Date`)
+
 # write.csv(df, file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv")
 ```
-```{r}
-
-```
-
-```{r check_box}
-# df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv", col_names = TRUE)
- 
-library(shiny)
-library(dplyr)
-library(ggplot2)
-library(plotly)
-library(lubridate)
-library(leaflet)
-library(scales)
-library(lattice)
-library(htmlwidgets)
-library(RColorBrewer)
-library(shinyWidgets)
-data(check)
-# df$`Violation Code`
-# df1<-df
-# df<-df1[1:1000,]
-
-ui <- fluidPage(
-        titlePanel("New York City Parking Violations"),
-        sidebarLayout(  
-                sidebarPanel  (
-                  
-                  checkboxGroupInput(inputId = "checkbox", label ="Select Locations", choices = unique(df$`Violation County`), selected = unique(df$`Violation County`)[],inline = FALSE),
-                  
-                  submitButton("Update View", icon("refresh")), 
- 
-                  pickerInput(inputId = "pickerInput", label = "Violation Code", choices =unique(df$`Violation Code`),selected = unique(df$`Violation Code`)[], multiple = TRUE, options = list(`actions-box` = TRUE, dropupAuto = TRUE, header = "Nothing selected, nothing gained",  liveSearch = TRUE,  liveSearchNormalize = TRUE,  title = NULL,
-  virtualScroll = NULL, width = NULL, windowPadding = NULL)),
-                  
-                  dateRangeInput(inputId = "date", label = "Date range", start = "2018-1-1", end = "2018-11-11", min = "2018-01-01", max = "2018-11-11")
-                  ),
-
-                mainPanel ( 
-                  tabsetPanel(type = "tabs",
-                        tabPanel("Plot", plotlyOutput("histogram1")),
-                        tabPanel("Plot2", plotlyOutput("histogram2")),
-                        tabPanel("Table", dataTableOutput("table")),
-                        tabPanel("Plot3", plotlyOutput("histogram3")),
-                        tabPanel("Map", leafletOutput("map")),
-                        tabPanel("Revenue", textOutput("revenue")),
-                        tabPanel("ReadMe", textOutput("readme"))
-                                ))
-))        
-
-server <- function(input, output, session){
-    # filtered_data <- reactive({df %>% filter(`Violation County` %in% input$checkbox)})
-
-    filtered_data <- reactive({df %>% filter(`Violation County` %in% input$checkbox) %>% filter(`Violation Code` %in% input$pickerInput) %>% filter(`Issue Date` %inrange% input$date )})
-  
-  # filtered_data <- reactive({
-  #   df %>% filter( `Violation County` == input$checkbox) %>%
-  #     # filter(ymd(`Issue Date`) >= input$date[1] & ymd(`Issue Date`) <= input$date[2]) %>%
-  #                                   filter(`Violation Code` == input$selectInput)
-  #   })
-        output$histogram1   <-  renderPlotly({
-                p <- ggplot(filtered_data(), aes(x = `Violation County`, color =`Violation County`))+geom_bar()
-                ggplotly(p) })
-
-        output$histogram2   <-  renderPlotly({
-                p <- ggplot(data = filtered_data(), aes(x = `Violation Code`))+geom_bar()+
-                        theme_bw()
-                ggplotly(p) })
-
-        output$table <- renderDataTable({filtered_data()})
-        
-        output$histogram3   <-  renderPlotly({
-                p <- ggplot(data = filtered_data(), aes(x = `Violation Time`))+geom_histogram(stat = "count", binwidth = 96)+
-                        theme_bw()
-                ggplotly(p) })
-
-         output$revenue <- renderText({sum(as.integer(filtered_data()$`All Other Areas`))})
-
-         output$readme <- renderText({print("This dataset was obtained from the City of New York,   https://data.cityofnewyork.us/City-Government/Parking-Violations-Issued-Fiscal-Year-2019/pvqr-7yc4 on November 2, 2018. Its most recent update was October 16, 2018.  
-           Parking Violation Codes were obtained from https://data.ny.gov/Transportation/DOF-Parking-Violation-Codes/ncbg-6agr and https://www1.nyc.gov/site/finance/vehicles/services-violation-codes.page    Registration Class Codes can be found at https://dmv.ny.gov/registration/registration-class-codes")})
-
-         output$map <- renderLeaflet({
-             leaflet(height = 30) %>%
-                  addTiles() %>%
-                 #   urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
-                 #   attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>'
-                 # ) %>%
-                 setView(lng = -74.05, lat = 40.70, zoom = 10)  
-             })
-}
-
-# df$`Violation County`[df$`Violation County` %in% c("Bronx")]
-shinyApp(ui = ui, server = server)
-```
-
-## Step 4 Submit Button 
-```{r update_view}
-# df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv", col_names = TRUE)
-# violationCodes <- read_csv(file = 'DOF_Parking_Violation_Codes_cleaned.csv')
-# library(shiny)
-# library(dplyr)
-# library(ggplot2)
-# library(plotly)
-# library(lubridate)
-# library(leaflet)
-# library(scales)
-# library(lattice)
-# library(htmlwidgets)
-# library(RColorBrewer)
-# library(shinyWidgets)
-# data(check)
-# df$`Violation Code`
-# df1<-df
-# df<-df1[1:1000,]
-
-ui <- fluidPage(
-        titlePanel("New York City Parking Violations"),
-        verticalLayout(  
-                # sidebarPanel  (
-                  flowLayout(
-                  checkboxGroupInput(inputId = "checkbox", label ="Select Locations", choices = unique(df$`Violation County`), selected = unique(df$`Violation County`)[],inline = FALSE),
- 
-                  pickerInput(inputId = "pickerinput", label = "Violation Code", choices =unique(df$`Violation Code`),selected = unique(df$`Violation Code`)[], multiple = TRUE, options = list(`actions-box` = TRUE, dropupAuto = TRUE, header = "Nothing selected, nothing gained",  liveSearch = TRUE,  liveSearchNormalize = TRUE,  title = NULL)),
-                  
-                  dateRangeInput(inputId = "date", label = "Date range", start = "2018-1-1", end = "2018-11-11", min = "2018-01-01", max = "2018-11-11")#,
-  
-                  # sliderInput(inputId = "slider", label = "Time of Day",  min = as.POSIXct("00:00",format="%H:%M"),
-                  #            max = as.POSIXct("24:00",format="%H:%M"),
-                  #            value = c(as.POSIXct("00:00",format="%H:%M"),as.POSIXct("24:00",format="%H:%M")
-                  #            ))
-                  )),
-  
-                  # actionButton("Engage!", icon("refresh")),
-
-                # mainPanel ( 
-                  tabsetPanel(type = "tabs",
-                        tabPanel("Tickets by Location", (verticalLayout(plotlyOutput("histogram1"), plotlyOutput("histogram1a")))  ),
-                        tabPanel("Violation Codes", plotlyOutput("histogram2")),
-                        tabPanel("Tickets by Time of Day", (verticalLayout(
-                                                             textOutput("revenue1"), 
-                                                            plotlyOutput("histogram3")))),
-                        tabPanel("Table", dataTableOutput("table")),
-                        tabPanel("Violation Code Definitions", dataTableOutput("violationtable")),
-                        tabPanel("Map", leafletOutput("map")),
-                        tabPanel("Revenue", htmlOutput("revenue")),
-                        tabPanel("ReadMe", textOutput("readme"))
-                                ))
-# ))       
 
 
-server <- function(input, output, session){
-    filtered_data <- reactive({df %>% filter(`Violation County` %in% input$checkbox) %>% filter(`Violation Code` %in% input$pickerinput) %>% filter(`Issue Date` %inrange% input$date)})
-    unfiltered_data <- reactive({df})
 
-    # filtered_data <- reactive({df %>% filter(`Violation County` %in% input$checkbox) %>% filter(`Violation Code` %in% input$pickerinput) %>% filter(`Issue Date` %inrange% input$date )})
-
-
-    violation_Codes <- reactive({violationCodes})
-  # filtered_data <- reactive({
-  #   df %>% filter( `Violation County` == input$checkbox) %>%
-  #     # filter(ymd(`Issue Date`) >= input$date[1] & ymd(`Issue Date`) <= input$date[2]) %>%
-  #                                   filter(`Violation Code` == input$selectInput)
-  #   })
-        output$histogram1   <-  renderPlotly({
-                p <- ggplot(filtered_data(), aes(x = `Violation County`))+geom_bar()
-                ggplotly(p) })
-        
-      output$histogram1a   <-  renderPlotly({
-                p <- ggplot(unfiltered_data(), aes(x = `Violation County`, fill =`Violation County`))+geom_bar()
-                ggplotly(p) })
-      
-        output$histogram2   <-  renderPlotly({
-                p <- ggplot(data = filtered_data(), aes(x = `Violation Code`))+geom_bar()+
-                        theme_bw()
-                ggplotly(p) })
-
-        output$table <- renderDataTable({filtered_data()})
-        
-        output$violationtable <- renderDataTable({violation_Codes()})
-
-        output$histogram3   <-  renderPlotly({
-                p <- ggplot(data = filtered_data(), aes(x = `Violation Time`))+geom_histogram(stat = "count", binwidth = 96)+
-                        theme_bw()
-                ggplotly(p) })
-
-         output$revenue <- renderUI({sum(as.integer(filtered_data()$`All Other Areas`))})
-         
-         output$revenue1 <- renderText({sum(as.integer(filtered_data()$`All Other Areas`))})
-
-
-         output$readme <- renderText({print("This dataset was obtained from the City of New York,   https://data.cityofnewyork.us/City-Government/Parking-Violations-Issued-Fiscal-Year-2019/pvqr-7yc4 on November 2, 2018. Its most recent update was October 16, 2018.  
-           Parking Violation Codes were obtained from https://data.ny.gov/Transportation/DOF-Parking-Violation-Codes/ncbg-6agr and https://www1.nyc.gov/site/finance/vehicles/services-violation-codes.page    Registration Class Codes can be found at https://dmv.ny.gov/registration/registration-class-codes")})
-
-         output$map <- renderLeaflet({
-             leaflet(height = 30) %>%
-                  addTiles() %>%
-                 #   urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
-                 #   attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>'
-                 # ) %>%
-                 setView(lng = -74.05, lat = 40.70, zoom = 10)  
-             })
-}
-
-# df$`Violation County`[df$`Violation County` %in% c("Bronx")]
-shinyApp(ui = ui, server = server)
-```
+## Step 2 Shiny App
 
 
 ```{r final}
@@ -435,8 +230,10 @@ library(RColorBrewer)
 library(shinyWidgets)
 library(Hmisc)
 library(data.table)
-# df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv", col_names = TRUE)
-# violationCodes <- read_csv(file = 'DOF_Parking_Violation_Codes_cleaned.csv')
+
+## Load the needed files
+df <- read_csv(file = "Parking_Violations_Issued_-_Fiscal_Year_2019_short_better.csv", col_names = TRUE)
+violationCodes <- read_csv(file = 'DOF_Parking_Violation_Codes_cleaned.csv')
 
 ui <- fluidPage(
         titlePanel("New York City Parking Violations"),
@@ -463,11 +260,15 @@ ui <- fluidPage(
                                 ))
 
 server <- function(input, output, session){
-    filtered_data <- reactive({df %>% filter(`Violation County` %in% input$checkbox) %>% filter(`Violation Code` %in% input$pickerinput) %>% filter(`Issue Date` %inrange% input$date)})
-    unfiltered_data <- reactive({df})
+
+  ## create reactive object for the outputs. Filtered data uses the various inputs to filter the data, unfiltered data has no filter (just raw, but reactive, data), and violation codes are unfiltered
+      filtered_data <- reactive({df %>% filter(`Violation County` %in% input$checkbox) %>% filter(`Violation Code` %in% input$pickerinput) %>% filter(`Issue Date` %inrange% input$date)})
+    
+      unfiltered_data <- reactive({df})
 
     violation_Codes <- reactive({violationCodes})
-        output$histogram1   <-  renderPlotly({
+      
+      output$histogram1   <-  renderPlotly({
                 p <- ggplot(filtered_data(), aes(x = `Violation County`))+geom_bar()
                 ggplotly(p) })
         
@@ -497,18 +298,18 @@ server <- function(input, output, session){
          output$readme <- renderText({print("This dataset was obtained from the City of New York,   https://data.cityofnewyork.us/City-Government/Parking-Violations-Issued-Fiscal-Year-2019/pvqr-7yc4 on November 2, 2018. Its most recent update was October 16, 2018.  
            Parking Violation Codes were obtained from https://data.ny.gov/Transportation/DOF-Parking-Violation-Codes/ncbg-6agr and https://www1.nyc.gov/site/finance/vehicles/services-violation-codes.page    Registration Class Codes can be found at https://dmv.ny.gov/registration/registration-class-codes")})
 
+         
+         ## This map is generelly unused. It would require lat/lon to be very effectice
          output$map <- renderLeaflet({
              leaflet(height = 30) %>%
-                  addTiles() %>%
-                 #   urlTemplate = "//{s}.tiles.mapbox.com/v3/jcheng.map-5ebohr46/{z}/{x}/{y}.png",
-                 #   attribution = 'Maps by <a href="http://www.mapbox.com/">Mapbox</a>'
-                 # ) %>%
+                  addTiles() 
                  setView(lng = -74.05, lat = 40.70, zoom = 10)  
              })
 }
 
 shinyApp(ui = ui, server = server)
 ```
+
 
 
 
